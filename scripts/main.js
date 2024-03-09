@@ -1,14 +1,7 @@
-import './style.css'
-
 import * as THREE from 'three'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
-
-// Renderer Setup
-const renderer = new THREE.WebGLRenderer({ antialias: true })
-renderer.setPixelRatio(window.devicePixelRatio)
-renderer.setSize(window.innerWidth, window.innerHeight)
-renderer.setClearColor(0x80a0e0)
-document.body.appendChild(renderer.domElement)
+import { World } from './world'
+import { renderer } from './renderer'
 
 // Camera Setup
 const camera = new THREE.PerspectiveCamera(
@@ -24,8 +17,9 @@ controls.target.set(16, 0, 16)
 
 // Scene Setup
 const scene = new THREE.Scene()
-const geometry = new THREE.BoxGeometry()
-const material = new THREE.MeshLambertMaterial({ color: 0x00ff00 })
+const world = new World()
+world.generate()
+scene.add(world)
 
 // Lights
 const light1 = new THREE.DirectionalLight()
@@ -40,16 +34,6 @@ const ambient = new THREE.AmbientLight()
 ambient.intensity = 0.1
 scene.add(ambient)
 
-function setupWorld(size) {
-    for (let x = 0; x < size; x++) {
-        for (let z = 0; z < size; z++) {
-            const cube = new THREE.Mesh(geometry, material)
-            cube.position.set(x, 0, z)
-            scene.add(cube)
-        }
-    }
-}
-
 // AutoResize
 window.addEventListener('resize', () => {
     camera.aspect = window.innerWidth / window.innerHeight
@@ -63,5 +47,4 @@ function animate() {
     renderer.render(scene, camera)
 }
 
-setupWorld(32)
 animate()
