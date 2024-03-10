@@ -3,14 +3,17 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 import Stats from 'three/examples/jsm/libs/stats.module.js'
 import { World } from './world'
 import { renderer } from './renderer'
+import { createUi } from './ui'
+
+const worldSize = { width: 128, height: 8 }
 
 // Camera Setup
 const camera = new THREE.PerspectiveCamera(
     75,
     window.innerWidth / window.innerHeight
 )
-camera.position.set(-32, 16, -32)
-camera.lookAt(0, 0, 0)
+camera.position.set(-32, 96, -32)
+camera.lookAt(worldSize.width / 2, 0, worldSize.width / 2)
 
 // Stats
 const stats = new Stats()
@@ -18,11 +21,11 @@ document.body.append(stats.dom)
 
 // Controls
 const controls = new OrbitControls(camera, renderer.domElement)
-controls.target.set(16, 0, 16)
+controls.target.set(worldSize.width / 2, 0, worldSize.width / 2)
 
 // Scene Setup
 const scene = new THREE.Scene()
-const world = new World()
+const world = new World(worldSize)
 world.generate()
 scene.add(world)
 
@@ -53,4 +56,5 @@ function animate() {
     renderer.render(scene, camera)
 }
 
+createUi(world)
 animate()
