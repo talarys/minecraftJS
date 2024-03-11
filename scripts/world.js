@@ -4,7 +4,6 @@ import { RNG } from './rng'
 import { blocks, resources } from './blocks'
 
 const geometry = new THREE.BoxGeometry(1, 1, 1)
-const material = new THREE.MeshLambertMaterial()
 
 export class World extends THREE.Group {
     size = {
@@ -104,32 +103,40 @@ export class World extends THREE.Group {
     generateMeshes() {
         this.disposeChildren()
 
+        const meshes = {}
         const maxCount = this.size.width * this.size.width * this.size.height
-        const mesh = new THREE.InstancedMesh(geometry, material, maxCount)
-        mesh.count = 0
+
+        for (const [key, value] of Object.entries(blocks)) {
+            if (key !== 'empty') {
+                const mesh = new THREE.InstancedMesh(
+                    geometry,
+                    value.material,
+                    maxCount,
+                )
+                mesh.name = key
+                mesh.count = 0
+                meshes[key] = mesh
+            }
+        }
 
         const matrix = new THREE.Matrix4()
         for (let x = 0; x < this.size.width; x++) {
             for (let y = 0; y < this.size.height; y++) {
                 for (let z = 0; z < this.size.width; z++) {
                     const blockType = this.getBlock(x, y, z).blockType
+                    if (blockType === 'empty') continue
+                    const mesh = meshes[blockType]
                     const instanceId = mesh.count
-
-                    if (blockType !== 'empty' && this.isBlockVisible(x, y, z)) {
+                    if (this.isBlockVisible(x, y, z)) {
                         matrix.setPosition(x, y, z)
                         mesh.setMatrixAt(instanceId, matrix)
-                        mesh.setColorAt(
-                            instanceId,
-                            new THREE.Color(blocks[blockType].color),
-                        )
                         this.setBlockInstanceId(x, y, z, instanceId)
                         mesh.count++
                     }
                 }
             }
         }
-
-        this.add(mesh)
+        this.add(...Object.values(meshes))
     }
 
     getBlock(x, y, z) {
