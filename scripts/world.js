@@ -1,4 +1,7 @@
 import * as THREE from 'three'
+import { SimplexNoise } from 'three/examples/jsm/math/SimplexNoise'
+import { RNG } from './rng'
+
 const geometry = new THREE.BoxGeometry()
 const material = new THREE.MeshLambertMaterial({ color: 0x00d000 })
 
@@ -6,14 +9,24 @@ export class World extends THREE.Group {
     constructor(size = { width: 64, height: 32 }) {
         super()
         this.size = size
+        this.data = []
+        this.params = {
+            terrain: {
+                seed: 1043,
+                scale: 30,
+                magnitude: 0.5,
+                offset: 0.2,
+            },
+        }
     }
 
     generate() {
+        this.initializeTerrain()
         this.generateTerrain()
         this.generateMeshes()
     }
 
-    generateTerrain() {
+    initializeTerrain() {
         this.data = []
         for (let x = 0; x < this.size.width; x++) {
             const slice = []
@@ -21,13 +34,41 @@ export class World extends THREE.Group {
                 const row = []
                 for (let z = 0; z < this.size.width; z++) {
                     row.push({
-                        id: 1,
+                        id: 0,
                         istanceId: null,
                     })
                 }
                 slice.push(row)
             }
             this.data.push(slice)
+        }
+    }
+
+    generateTerrain() {
+        const rng = new RNG(this.params.terrain.seed)
+        const simplex = new SimplexNoise(rng)
+        for (let x = 0; x < this.size.width; x++) {
+            for (let z = 0; z < this.size.width; z++) {
+                for (let y = 0; y < this.size.height; y++) {
+                    const value = simplex.noise(
+                        x / this.params.terrain.scale,
+                        z / this.params.terrain.scale
+                    )
+
+                    const scaledNoise =
+            this.params.terrain.offset + this.params.terrain.magnitude * value
+
+                    let height = Math.min(
+                        Math.floor(this.size.height * scaledNoise),
+                        this.size.height - 1
+                    )
+                    height = height >= 0 ? height : 0
+
+                    for (let y = 0; y <= height; y++) {
+                        this.setBlockId(x, y, z, 1)
+                    }
+                }
+            }
         }
     }
 

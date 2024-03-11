@@ -5,7 +5,7 @@ import { World } from './world'
 import { renderer } from './renderer'
 import { createUi } from './ui'
 
-const worldSize = { width: 128, height: 8 }
+const worldSize = { width: 128, height: 32 }
 
 // Camera Setup
 const camera = new THREE.PerspectiveCamera(
