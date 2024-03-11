@@ -1,9 +1,10 @@
 import * as THREE from 'three'
 import { SimplexNoise } from 'three/examples/jsm/math/SimplexNoise'
 import { RNG } from './rng'
+import { blocks } from './blocks'
 
 const geometry = new THREE.BoxGeometry()
-const material = new THREE.MeshLambertMaterial({ color: 0x00d000 })
+const material = new THREE.MeshLambertMaterial()
 
 export class World extends THREE.Group {
     constructor(size = { width: 64, height: 32 }) {
@@ -34,7 +35,7 @@ export class World extends THREE.Group {
                 const row = []
                 for (let z = 0; z < this.size.width; z++) {
                     row.push({
-                        id: 0,
+                        blockType: 'empty',
                         istanceId: null,
                     })
                 }
@@ -48,8 +49,8 @@ export class World extends THREE.Group {
         const rng = new RNG(this.params.terrain.seed)
         const simplex = new SimplexNoise(rng)
         for (let x = 0; x < this.size.width; x++) {
-            for (let z = 0; z < this.size.width; z++) {
-                for (let y = 0; y < this.size.height; y++) {
+            for (let y = 0; y < this.size.height; y++) {
+                for (let z = 0; z < this.size.width; z++) {
                     const value = simplex.noise(
                         x / this.params.terrain.scale,
                         z / this.params.terrain.scale
@@ -64,8 +65,14 @@ export class World extends THREE.Group {
                     )
                     height = height >= 0 ? height : 0
 
-                    for (let y = 0; y <= height; y++) {
-                        this.setBlockId(x, y, z, 1)
+                    for (let y = 0; y <= this.size.height; y++) {
+                        if (y < height) {
+                            this.setBlockType(x, y, z, 'dirt')
+                        } else if (y === height) {
+                            this.setBlockType(x, y, z, 'grass')
+                        } else {
+                            this.setBlockType(x, y, z, 'empty')
+                        }
                     }
                 }
             }
@@ -82,12 +89,16 @@ export class World extends THREE.Group {
         for (let x = 0; x < this.size.width; x++) {
             for (let y = 0; y < this.size.height; y++) {
                 for (let z = 0; z < this.size.width; z++) {
-                    const blockId = this.getBlock(x, y, z).id
+                    const blockType = this.getBlock(x, y, z).blockType
                     const instanceId = mesh.count
 
-                    if (blockId !== 0) {
+                    if (blockType !== 'empty' && this.isBlockVisible(x, y, z)) {
                         matrix.setPosition(x + 0.5, y + 0.5, z + 0.5)
                         mesh.setMatrixAt(instanceId, matrix)
+                        mesh.setColorAt(
+                            instanceId,
+                            new THREE.Color(blocks[blockType].color)
+                        )
                         this.setBlockInstanceId(x, y, z, instanceId)
                         mesh.count++
                     }
@@ -106,9 +117,9 @@ export class World extends THREE.Group {
         }
     }
 
-    setBlockId(x, y, z, id) {
+    setBlockType(x, y, z, blockType) {
         if (this.inBounds(x, y, z)) {
-            this.data[x][y][z].id = id
+            this.data[x][y][z].blockType = blockType
         }
     }
 
@@ -131,5 +142,23 @@ export class World extends THREE.Group {
         } else {
             return false
         }
+    }
+
+    isBlockVisible(x, y, z) {
+        const blocksAroundTarget = [
+            [x + 1, y, z],
+            [x - 1, y, z],
+            [x, y + 1, z],
+            // [x, y - 1, z],
+            [x, y, z + 1],
+            [x, y, z - 1],
+        ]
+
+        for (let block of blocksAroundTarget) {
+            if ((this.getBlock(...block)?.blockType ?? 'empty') === 'empty') {
+                return true
+            }
+        }
+        return false
     }
 }
