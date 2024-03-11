@@ -1,7 +1,7 @@
 import * as THREE from 'three'
 import { SimplexNoise } from 'three/examples/jsm/math/SimplexNoise'
 import { RNG } from './rng'
-import { blocks } from './blocks'
+import { blocks, resources } from './blocks'
 
 const geometry = new THREE.BoxGeometry(1, 1, 1)
 const material = new THREE.MeshLambertMaterial()
@@ -9,7 +9,7 @@ const material = new THREE.MeshLambertMaterial()
 export class World extends THREE.Group {
     size = {
         width: 128,
-        height: 16,
+        height: 32,
     }
     params = {
         seed: 0,
@@ -25,6 +25,7 @@ export class World extends THREE.Group {
     generate() {
         const rng = new RNG(this.params.seed)
         this.initialize()
+        this.generateResources(rng)
         this.generateTerrain(rng)
         this.generateMeshes()
     }
@@ -44,6 +45,26 @@ export class World extends THREE.Group {
                 slice.push(row)
             }
             this.data.push(slice)
+        }
+    }
+
+    generateResources(rng) {
+        const noiseGenerator = new SimplexNoise(rng)
+        for (let resource of resources) {
+            for (let x = 0; x < this.size.width; x++) {
+                for (let y = 0; y < this.size.height; y++) {
+                    for (let z = 0; z < this.size.width; z++) {
+                        const value = noiseGenerator.noise3d(
+                            x / blocks[resource].scale.x,
+                            y / blocks[resource].scale.y,
+                            z / blocks[resource].scale.z,
+                        )
+                        if (value > blocks[resource].scarcity) {
+                            this.setBlockType(x, y, z, resource)
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -68,9 +89,11 @@ export class World extends THREE.Group {
                 )
 
                 for (let y = 0; y < this.size.height; y++) {
-                    if (y === height) {
+                    if (y > height) {
+                        this.setBlockType(x, y, z, 'empty')
+                    } else if (y === height) {
                         this.setBlockType(x, y, z, 'grass')
-                    } else if (y < height) {
+                    } else if (this.getBlock(x, y, z).blockType === 'empty') {
                         this.setBlockType(x, y, z, 'dirt')
                     }
                 }
