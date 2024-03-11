@@ -3,40 +3,42 @@ import { SimplexNoise } from 'three/examples/jsm/math/SimplexNoise'
 import { RNG } from './rng'
 import { blocks } from './blocks'
 
-const geometry = new THREE.BoxGeometry()
+const geometry = new THREE.BoxGeometry(1, 1, 1)
 const material = new THREE.MeshLambertMaterial()
 
 export class World extends THREE.Group {
-    constructor(size = { width: 64, height: 32 }) {
-        super()
-        this.size = size
-        this.data = []
-        this.params = {
-            terrain: {
-                seed: 1043,
-                scale: 30,
-                magnitude: 0.5,
-                offset: 0.2,
-            },
-        }
+    size = {
+        width: 128,
+        height: 16,
     }
+    params = {
+        seed: 0,
+        terrain: {
+            scale: 30,
+            magnitude: 0.2,
+            offset: 0.5,
+        },
+    }
+    data = []
+    threshold = 0.5
 
     generate() {
-        this.initializeTerrain()
-        this.generateTerrain()
+        const rng = new RNG(this.params.seed)
+        this.initialize()
+        this.generateTerrain(rng)
         this.generateMeshes()
     }
 
-    initializeTerrain() {
+    initialize() {
         this.data = []
         for (let x = 0; x < this.size.width; x++) {
             const slice = []
-            for (let y = 0; y < this.size.width; y++) {
+            for (let y = 0; y < this.size.height; y++) {
                 const row = []
                 for (let z = 0; z < this.size.width; z++) {
                     row.push({
                         blockType: 'empty',
-                        istanceId: null,
+                        instanceId: null,
                     })
                 }
                 slice.push(row)
@@ -45,34 +47,31 @@ export class World extends THREE.Group {
         }
     }
 
-    generateTerrain() {
-        const rng = new RNG(this.params.terrain.seed)
-        const simplex = new SimplexNoise(rng)
+    generateTerrain(rng) {
+        const noiseGenerator = new SimplexNoise(rng)
         for (let x = 0; x < this.size.width; x++) {
-            for (let y = 0; y < this.size.height; y++) {
-                for (let z = 0; z < this.size.width; z++) {
-                    const value = simplex.noise(
-                        x / this.params.terrain.scale,
-                        z / this.params.terrain.scale
-                    )
+            for (let z = 0; z < this.size.width; z++) {
+                const value = noiseGenerator.noise(
+                    x / this.params.terrain.scale,
+                    z / this.params.terrain.scale,
+                )
 
-                    const scaledNoise =
-            this.params.terrain.offset + this.params.terrain.magnitude * value
+                const scaledNoise =
+                    this.params.terrain.offset +
+                    this.params.terrain.magnitude * value
 
-                    let height = Math.min(
-                        Math.floor(this.size.height * scaledNoise),
-                        this.size.height - 1
-                    )
-                    height = height >= 0 ? height : 0
+                let height = this.size.height * scaledNoise
 
-                    for (let y = 0; y <= this.size.height; y++) {
-                        if (y < height) {
-                            this.setBlockType(x, y, z, 'dirt')
-                        } else if (y === height) {
-                            this.setBlockType(x, y, z, 'grass')
-                        } else {
-                            this.setBlockType(x, y, z, 'empty')
-                        }
+                height = Math.max(
+                    0,
+                    Math.min(Math.floor(height), this.size.height - 1),
+                )
+
+                for (let y = 0; y < this.size.height; y++) {
+                    if (y === height) {
+                        this.setBlockType(x, y, z, 'grass')
+                    } else if (y < height) {
+                        this.setBlockType(x, y, z, 'dirt')
                     }
                 }
             }
@@ -80,7 +79,8 @@ export class World extends THREE.Group {
     }
 
     generateMeshes() {
-        this.clear()
+        this.disposeChildren()
+
         const maxCount = this.size.width * this.size.width * this.size.height
         const mesh = new THREE.InstancedMesh(geometry, material, maxCount)
         mesh.count = 0
@@ -93,11 +93,11 @@ export class World extends THREE.Group {
                     const instanceId = mesh.count
 
                     if (blockType !== 'empty' && this.isBlockVisible(x, y, z)) {
-                        matrix.setPosition(x + 0.5, y + 0.5, z + 0.5)
+                        matrix.setPosition(x, y, z)
                         mesh.setMatrixAt(instanceId, matrix)
                         mesh.setColorAt(
                             instanceId,
-                            new THREE.Color(blocks[blockType].color)
+                            new THREE.Color(blocks[blockType].color),
                         )
                         this.setBlockInstanceId(x, y, z, instanceId)
                         mesh.count++
@@ -132,11 +132,11 @@ export class World extends THREE.Group {
     inBounds(x, y, z) {
         if (
             x >= 0 &&
-      x < this.size.width &&
-      y >= 0 &&
-      y < this.size.height &&
-      z >= 0 &&
-      z < this.size.width
+            x < this.size.width &&
+            y >= 0 &&
+            y < this.size.height &&
+            z >= 0 &&
+            z < this.size.width
         ) {
             return true
         } else {
@@ -160,5 +160,12 @@ export class World extends THREE.Group {
             }
         }
         return false
+    }
+
+    disposeChildren() {
+        this.traverse((obj) => {
+            if (obj.dispose) obj.dispose()
+        })
+        this.clear()
     }
 }
