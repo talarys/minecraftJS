@@ -2,26 +2,24 @@ import * as THREE from 'three'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 import Stats from 'three/examples/jsm/libs/stats.module.js'
 import { World } from './world'
-import { renderer } from './renderer'
 import { createUi } from './ui'
 
 const worldSize = { width: 128, height: 32 }
 
+// Renderer Setup
+const renderer = new THREE.WebGLRenderer({ antialias: true })
+renderer.setPixelRatio(window.devicePixelRatio)
+renderer.setSize(window.innerWidth, window.innerHeight)
+renderer.setClearColor(0x80a0e0)
+document.body.appendChild(renderer.domElement)
+
 // Camera Setup
 const camera = new THREE.PerspectiveCamera(
     75,
-    window.innerWidth / window.innerHeight
+    window.innerWidth / window.innerHeight,
 )
 camera.position.set(-32, 96, -32)
 camera.lookAt(worldSize.width / 2, 0, worldSize.width / 2)
-
-// Stats
-const stats = new Stats()
-document.body.append(stats.dom)
-
-// Controls
-const controls = new OrbitControls(camera, renderer.domElement)
-controls.target.set(worldSize.width / 2, 0, worldSize.width / 2)
 
 // Scene Setup
 const scene = new THREE.Scene()
@@ -49,11 +47,19 @@ window.addEventListener('resize', () => {
     renderer.setSize(window.innerWidth, window.innerHeight)
 })
 
+// Stats
+const stats = new Stats()
+document.body.append(stats.dom)
+
+// Controls
+const controls = new OrbitControls(camera, renderer.domElement)
+controls.target.set(worldSize.width / 2, 0, worldSize.width / 2)
+controls.update()
+
 function animate() {
     requestAnimationFrame(animate)
-    controls.update()
-    stats.update()
     renderer.render(scene, camera)
+    stats.update()
 }
 
 createUi(world)
