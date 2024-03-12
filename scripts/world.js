@@ -115,6 +115,8 @@ export class World extends THREE.Group {
                 )
                 mesh.name = key
                 mesh.count = 0
+                mesh.castShadow = true
+                mesh.receiveShadow = true
                 meshes[key] = mesh
             }
         }

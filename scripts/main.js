@@ -1,67 +1,81 @@
 import * as THREE from 'three'
-import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 import Stats from 'three/examples/jsm/libs/stats.module.js'
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 import { World } from './world'
 import { createUi } from './ui'
 
-// Renderer Setup
-const renderer = new THREE.WebGLRenderer({ antialias: true })
+// Renderer setup
+const renderer = new THREE.WebGLRenderer()
 renderer.setPixelRatio(window.devicePixelRatio)
 renderer.setSize(window.innerWidth, window.innerHeight)
 renderer.setClearColor(0x80a0e0)
+renderer.shadowMap.enabled = true
+renderer.shadowMap.type = THREE.PCFSoftShadowMap
 document.body.appendChild(renderer.domElement)
 
-// Scene Setup
-const scene = new THREE.Scene()
-const world = new World()
-world.generate()
-scene.add(world)
-
-// Camera Setup
+// Camera setup
 const camera = new THREE.PerspectiveCamera(
     75,
     window.innerWidth / window.innerHeight,
     0.1,
     1000,
 )
-camera.position.set(-35, 75, -35)
+camera.position.set(-32, 32, 32)
 
-// Lights
-const light1 = new THREE.DirectionalLight()
-light1.position.set(1, 1, 1)
-scene.add(light1)
+const controls = new OrbitControls(camera, renderer.domElement)
+controls.target.set(32, 0, 32)
+controls.update()
 
-const light2 = new THREE.DirectionalLight()
-light1.position.set(-1, 1, -0.5)
-scene.add(light2)
+// Scene setup
+const scene = new THREE.Scene()
+const world = new World()
+world.generate()
+scene.add(world)
 
-const ambient = new THREE.AmbientLight()
-ambient.intensity = 0.1
-scene.add(ambient)
+function setupLighting() {
+    const sun = new THREE.DirectionalLight()
+    sun.intensity = 1.5
+    sun.position.set(50, 50, 50)
+    sun.castShadow = true
 
-// AutoResize
+    // Set the size of the sun's shadow box
+    sun.shadow.camera.left = -50
+    sun.shadow.camera.right = 50
+    sun.shadow.camera.top = 50
+    sun.shadow.camera.bottom = -50
+    sun.shadow.camera.near = 0.1
+    sun.shadow.camera.far = 100
+    sun.shadow.bias = -0.0005
+    sun.shadow.mapSize = new THREE.Vector2(512, 512)
+    scene.add(sun)
+
+    scene.add(new THREE.CameraHelper(sun.shadow.camera))
+
+    const ambient = new THREE.AmbientLight()
+    ambient.intensity = 0.1
+    scene.add(ambient)
+}
+
+// Events
 window.addEventListener('resize', () => {
+    // Resize camera aspect ratio and renderer size to the new window size
     camera.aspect = window.innerWidth / window.innerHeight
     camera.updateProjectionMatrix()
     renderer.setSize(window.innerWidth, window.innerHeight)
 })
 
-// Stats
+// UI Setup
 const stats = new Stats()
-document.body.append(stats.dom)
+stats.showPanel(2)
+document.body.appendChild(stats.dom)
 
-// Controls
-const controls = new OrbitControls(camera, renderer.domElement)
-controls.update()
-
+// Render loop
 function animate() {
     requestAnimationFrame(animate)
     renderer.render(scene, camera)
-
-    controls.target.set(world.size.width / 2, 0, world.size.width / 2)
-    camera.lookAt(world.size.width / 2, 0, world.size.width / 2)
     stats.update()
 }
 
 createUi(world)
+setupLighting()
 animate()
